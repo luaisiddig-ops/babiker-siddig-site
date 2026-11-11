@@ -22,18 +22,43 @@
     if (window.renderGallery) window.renderGallery();
   }
 
+  /* Tries the WhatsApp desktop/mobile app directly (whatsapp://) so desktop
+     users with the app installed skip the wa.me landing page entirely; if
+     nothing handles that protocol within ~1.2s (no app installed), falls
+     back to the normal wa.me web link exactly as before. */
+  function openWhatsAppSmart(number, text){
+    var encoded = encodeURIComponent(text);
+    var appUrl = "whatsapp://send?phone=" + number + "&text=" + encoded;
+    var webUrl = "https://wa.me/" + number + "?text=" + encoded;
+    var timer = setTimeout(function(){
+      window.location.href = webUrl;
+    }, 1200);
+    function onBlur(){
+      clearTimeout(timer);
+      window.removeEventListener("blur", onBlur);
+    }
+    window.addEventListener("blur", onBlur);
+    window.location.href = appUrl;
+  }
+  function wireSmartWhatsappLink(el, number, text){
+    if (!el) return;
+    el.href = "https://wa.me/" + number + "?text=" + encodeURIComponent(text);
+    el.onclick = function(e){
+      e.preventDefault();
+      openWhatsAppSmart(number, text);
+    };
+  }
+
   function updateGeneralWhatsappLinks(lang){
     var text = lang === "ar"
       ? "مرحباً، أرغب في الاستفسار عن إحدى اللوحات المعروضة في الموقع."
       : "Hello, I'd like to enquire about one of the paintings on the website.";
-    var encoded = encodeURIComponent(text);
     var pairs = [
       ["waCardUae", "971585410334"], ["waCardEgypt", "201143813563"],
       ["waFooterUae", "971585410334"], ["waFooterEgypt", "201143813563"]
     ];
     pairs.forEach(function(p){
-      var el = document.getElementById(p[0]);
-      if (el) el.href = "https://wa.me/" + p[1] + "?text=" + encoded;
+      wireSmartWhatsappLink(document.getElementById(p[0]), p[1], text);
     });
   }
   function initLang(){
@@ -453,8 +478,8 @@
       ? ("مرحباً، أرغب في الاستفسار عن اللوحة " + a.id.toUpperCase() + " (" + a.title_ar + ")." + dimsNote + priceNote + " هل هي متاحة للاقتناء؟")
       : ("Hello, I'd like to enquire about the painting " + a.id.toUpperCase() + " (" + a.title_en + ")." + dimsNote + priceNote + " Is it available for acquisition?");
 
-    document.getElementById("modalWhatsappUae").href = "https://wa.me/" + WHATSAPP_NUMBERS[0] + "?text=" + encodeURIComponent(text);
-    document.getElementById("modalWhatsappEgypt").href = "https://wa.me/" + WHATSAPP_NUMBERS[1] + "?text=" + encodeURIComponent(text);
+    wireSmartWhatsappLink(document.getElementById("modalWhatsappUae"), WHATSAPP_NUMBERS[0], text);
+    wireSmartWhatsappLink(document.getElementById("modalWhatsappEgypt"), WHATSAPP_NUMBERS[1], text);
     document.getElementById("modalEmail").onclick = function(){
       window.location.href = "mailto:" + EMAIL + "?subject=" + encodeURIComponent("استفسار عن لوحة " + a.id.toUpperCase() + " / Enquiry: " + a.id.toUpperCase()) + "&body=" + encodeURIComponent(text);
     };
@@ -515,13 +540,13 @@
       if (!validate()) return;
       var lang = document.documentElement.lang === "ar" ? "ar" : "en";
       var text = buildMessage(lang);
-      window.open("https://wa.me/" + WHATSAPP_NUMBERS[0] + "?text=" + encodeURIComponent(text), "_blank");
+      openWhatsAppSmart(WHATSAPP_NUMBERS[0], text);
     });
     if (waBtnEgypt) waBtnEgypt.addEventListener("click", function(){
       if (!validate()) return;
       var lang = document.documentElement.lang === "ar" ? "ar" : "en";
       var text = buildMessage(lang);
-      window.open("https://wa.me/" + WHATSAPP_NUMBERS[1] + "?text=" + encodeURIComponent(text), "_blank");
+      openWhatsAppSmart(WHATSAPP_NUMBERS[1], text);
     });
     if (emailBtn) emailBtn.addEventListener("click", function(){
       if (!validate()) return;
